@@ -38,7 +38,7 @@ jobs:
         run: docker build -t prueba2-app -f deployment/Dockerfile .
 
       - name: Deploy to simulated environment
-        run: docker compose -f docker-compose.yml up -d
+        run:  docker compose -f deployment/docker-compose.yml down || true
 
       - name: Clean up
         if: always()
