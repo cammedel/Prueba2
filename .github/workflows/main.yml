@@ -21,8 +21,26 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build and test with Maven
+      - name: Build and run tests with Maven
         run: mvn clean verify
+
+      - name: SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn clean verify sonar:sonar \
+            -Dsonar.organization=cammedel \
+            -Dsonar.projectKey=cammedel_Prueba2 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      - name: Verify Node and npm
+        run: |
+          node -v
+          npm -v
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
 
       - name: Authenticate Snyk CLI
         env:
@@ -35,26 +53,15 @@ jobs:
       - name: Generate Snyk JSON Report
         if: always()
         run: |
-          echo "Generando reporte snyk"
-          snyk test --json > snyk-report.json || echo "Falló Snyk test"
+          echo "Generando reporte JSON de Snyk"
+          snyk test --json > snyk-report.json || echo "Falló snyk test"
           ls -lh snyk-report.json || echo "No se generó el reporte"
-
       - name: Upload Snyk JSON Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: snyk-report
           path: snyk-report.json
-
-      - name: SonarCloud Scan
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          mvn clean verify sonar:sonar \
-            -Dsonar.organization=cammedel \
-            -Dsonar.projectKey=cammedel_Prueba2 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       - name: Build Docker image
         run: docker build -t prueba2-app -f deployment/Dockerfile .
@@ -65,4 +72,4 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          docker compose -f deployment/docker-compose.yml down || true
+          docker compose -f docker-compose.yml down || true
