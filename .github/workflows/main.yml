@@ -21,8 +21,30 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build and run tests with Maven
+      - name: Build and test with Maven
         run: mvn clean verify
+
+      - name: Authenticate Snyk CLI
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth $SNYK_TOKEN
+
+      - name: Snyk test Java dependencies
+        run: snyk test --severity-threshold=high
+
+      - name: Generate Snyk JSON Report
+        if: always()
+        run: |
+          echo "Generando reporte snyk"
+          snyk test --json > snyk-report.json || echo "Falló Snyk test"
+          ls -lh snyk-report.json || echo "No se generó el reporte"
+
+      - name: Upload Snyk JSON Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-report
+          path: snyk-report.json
 
       - name: SonarCloud Scan
         env:
@@ -38,9 +60,9 @@ jobs:
         run: docker build -t prueba2-app -f deployment/Dockerfile .
 
       - name: Deploy to simulated environment
-        run:  docker compose -f deployment/docker-compose.yml down || true
+        run: docker compose -f deployment/docker-compose.yml down || true
 
       - name: Clean up
         if: always()
         run: |
-          docker compose -f docker-compose.yml down || true
+          docker compose -f deployment/docker-compose.yml down || true
