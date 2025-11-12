@@ -47,16 +47,21 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk config set api=$SNYK_TOKEN
 
+      - name: Ensure mvnw is executable
+        run: chmod +x mvnw
 
       - name: Snyk test Java dependencies
-        run: snyk test --severity-threshold=high
+        run: |
+          echo "Ejecutando análisis de vulnerabilidades con Snyk..."
+          snyk test --file=pom.xml --package-manager=maven --severity-threshold=high
 
       - name: Generate Snyk JSON Report
         if: always()
         run: |
-          echo "Generando reporte JSON de Snyk"
-          snyk test --json > snyk-report.json || echo "Falló snyk test"
+          echo "Generando reporte JSON de Snyk..."
+          snyk test --file=pom.xml --package-manager=maven --json > snyk-report.json || echo "Falló Snyk test, pero se continúa"
           ls -lh snyk-report.json || echo "No se generó el reporte"
+
       - name: Upload Snyk JSON Report
         if: always()
         uses: actions/upload-artifact@v4
