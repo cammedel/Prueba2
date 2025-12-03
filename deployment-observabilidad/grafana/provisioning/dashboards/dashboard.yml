@@ -1,0 +1,22 @@
+apiVersion: 1
+
+providers:
+  - name: 'Bdget Microservice'
+    orgId: 1
+    folder: 'Microservices'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+  
+  - name: 'CI/CD Metrics'
+    orgId: 1
+    folder: 'DevOps'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

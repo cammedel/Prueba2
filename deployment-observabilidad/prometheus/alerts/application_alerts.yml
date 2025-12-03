@@ -1,0 +1,144 @@
+groups:
+  - name: application_health
+    interval: 30s
+    rules:
+      # Alerta cuando el servicio está caído
+      - alert: ServiceDown
+        expr: up{job="spring-boot-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Servicio {{ $labels.application }} está caído"
+          description: "El microservicio {{ $labels.application }} no está respondiendo por más de 1 minuto."
+
+      # Alerta por alta tasa de errores HTTP
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: errors
+        annotations:
+          summary: "Alta tasa de errores HTTP en {{ $labels.application }}"
+          description: "Más del 5% de las peticiones están fallando con errores 5xx en los últimos 5 minutos."
+
+      # Alerta por latencia alta
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Alta latencia en {{ $labels.application }}"
+          description: "El percentil 95 de latencia es mayor a 2 segundos."
+
+      # Alerta por bajo throughput
+      - alert: LowThroughput
+        expr: rate(http_server_requests_seconds_count[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Bajo throughput en {{ $labels.application }}"
+          description: "El servicio está recibiendo menos de 0.1 peticiones por segundo."
+
+  - name: jvm_health
+    interval: 30s
+    rules:
+      # Alerta por alto uso de memoria JVM
+      - alert: HighJVMMemoryUsage
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Alto uso de memoria heap en {{ $labels.application }}"
+          description: "El uso de memoria heap está por encima del 85% (actual: {{ $value }}%)."
+
+      # Alerta por alto uso de CPU
+      - alert: HighCPUUsage
+        expr: process_cpu_usage * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Alto uso de CPU en {{ $labels.application }}"
+          description: "El uso de CPU está por encima del 80% (actual: {{ $value }}%)."
+
+      # Alerta por demasiados threads
+      - alert: HighThreadCount
+        expr: jvm_threads_live_threads > 200
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Alto número de threads en {{ $labels.application }}"
+          description: "El número de threads activos es mayor a 200 (actual: {{ $value }})."
+
+  - name: database_health
+    interval: 30s
+    rules:
+      # Alerta por conexiones de BD agotadas
+      - alert: DatabaseConnectionPoolExhausted
+        expr: hikaricp_connections_active / hikaricp_connections_max > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Pool de conexiones de BD casi agotado en {{ $labels.application }}"
+          description: "Más del 90% de las conexiones están en uso."
+
+      # Alerta por timeouts de BD
+      - alert: DatabaseConnectionTimeout
+        expr: rate(hikaricp_connections_timeout_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Timeouts de conexión a BD en {{ $labels.application }}"
+          description: "Se están detectando timeouts al intentar conectar con la base de datos."
+
+  - name: quality_gates
+    interval: 30s
+    rules:
+      # Alerta para pipeline CI/CD (simulada con métricas custom)
+      - alert: TestCoverageLow
+        expr: test_coverage_percentage < 70
+        for: 1m
+        labels:
+          severity: warning
+          category: quality
+        annotations:
+          summary: "Cobertura de pruebas baja"
+          description: "La cobertura de pruebas está por debajo del 70% (actual: {{ $value }}%)."
+
+      # Alerta por vulnerabilidades de seguridad
+      - alert: SecurityVulnerabilitiesDetected
+        expr: security_vulnerabilities_count > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Vulnerabilidades de seguridad detectadas"
+          description: "Se han detectado {{ $value }} vulnerabilidades de seguridad."
+
+      # Alerta por code smells
+      - alert: HighCodeSmells
+        expr: code_smells_count > 50
+        for: 1m
+        labels:
+          severity: warning
+          category: quality
+        annotations:
+          summary: "Alto número de code smells"
+          description: "Se han detectado {{ $value }} code smells en el análisis estático."

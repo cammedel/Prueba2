@@ -1,4 +1,25 @@
 services:
+  oracle-db:
+    image: gvenzl/oracle-free:latest
+    container_name: oracle-db
+    platform: linux/arm64
+    ports:
+      - "1521:1521"
+    environment:
+      ORACLE_PASSWORD: OraclePassword123
+      ORACLE_DATABASE: XEPDB1
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    networks:
+      - default
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   bdget-app:
     build:
       context: ..
@@ -8,10 +29,31 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@//host.docker.internal:1521/ORCLCDB}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-oracle_user}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-oracle_password}
+      SPRING_DATASOURCE_URL: jdbc:oracle:thin:@oracle-db:1521/XEPDB1
+      SPRING_DATASOURCE_USERNAME: system
+      SPRING_DATASOURCE_PASSWORD: OraclePassword123
       CONFIG_SERVER_URL: ${CONFIG_SERVER_URL:-http://host.docker.internal:8888}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       JAVA_OPTS: ${JAVA_OPTS:-}
+    platform: linux/arm64
+    networks:
+      - default
+      - monitoring
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8080"
+      - "prometheus.path=/actuator/prometheus"
     restart: unless-stopped
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+
+volumes:
+  oracle-data:
+
+networks:
+  default:
+    driver: bridge
+  monitoring:
+    external: true
+    name: deployment-observabilidad_monitoring
